@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders
+    ports:
+      - "54329:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders -d orders"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mongo:
+    image: mongo:7
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  catalog:
+    build: ./apps/catalog
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      MONGO_DB: catalog
+    ports:
+      - "8081:8081"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  orders:
+    build: ./apps/orders
+    environment:
+      DATABASE_URL: postgres://orders:orders@postgres:5432/orders
+      CATALOG_BASE_URL: http://catalog:8081
+      PORT: "8080"
+    ports:
+      - "18080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      catalog:
+        condition: service_started
