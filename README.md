@@ -2,14 +2,16 @@
 
 Duas APIs para o desafio de COE Leader — Desenvolvimento. Pedidos grava o pedido em PostgreSQL. Catálogo responde o preço vigente a partir do MongoDB. Pedidos consulta o catálogo uma vez por pedido, com todos os SKUs na mesma chamada.
 
-Não há interface gráfica. O contrato está em `specs/` e o roteiro executável está em `scripts/demo.py`.
+A raiz de cada serviço abre o Swagger, para listar e experimentar as rotas. O contrato está em `specs/` e o roteiro executável está em `scripts/demo.py`.
 
 ## O que sobe
 
-| Serviço | Porta no host | Banco |
-|---|---|---|
-| Pedidos | 18080 | PostgreSQL 16, publicado em `localhost:54329` |
-| Catálogo | 8081 | MongoDB 7, só na rede do Compose |
+| Serviço | Porta no host | Swagger | Banco |
+|---|---|---|---|
+| Pedidos | 18080 | http://127.0.0.1:18080/docs | PostgreSQL 16, publicado em `localhost:54329` |
+| Catálogo | 8081 | http://127.0.0.1:8081/docs | MongoDB 7, só na rede do Compose |
+
+A porta 8080 neste computador não é o Pedidos. Outro processo já a usa. O Compose publica o Pedidos em **18080**. Abrir `http://127.0.0.1:8081/` ou `http://127.0.0.1:18080/` redireciona para o Swagger. O JSON `{"detail":"Not Found"}` é a resposta padrão do FastAPI quando a rota não existe; a interface fica em `/docs`.
 
 ## Como rodar
 
@@ -55,7 +57,7 @@ curl -s -X PUT http://127.0.0.1:18080/discount-rules/11111111-1111-4111-8111-111
   -d '{"name":"Pedidos a partir de R$ 200,00 recebem 20%","minSubtotalCents":20000,"percent":20,"active":true}'
 ```
 
-O pedido seguinte usa o novo percentual. O código da aplicação não muda.
+O pedido seguinte usa o novo percentual. O código da aplicação não muda. Um pedido já gravado continua mostrando o nome e o percentual de quando foi criado. Abaixo do mínimo o desconto é zero e `discountRule` fica nulo.
 
 ## Testes
 

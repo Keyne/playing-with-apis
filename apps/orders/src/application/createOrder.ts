@@ -78,7 +78,8 @@ export async function createOrder(command: CreateOrderCommand, deps: CreateOrder
     totalCents: subtotalCents - off,
     currency: "BRL",
     status: "created",
-    discountRule: rule === null ? null : { id: rule.id, name: rule.name, percent: rule.percent },
+    discountRule:
+      rule !== null && off > 0 ? { id: rule.id, name: rule.name, percent: rule.percent } : null,
     createdAt: now,
   });
 }

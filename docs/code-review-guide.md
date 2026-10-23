@@ -28,4 +28,4 @@ Um PR pode mudar a regra de desconto só por dado (`PUT /discount-rules/{id}`). 
 
 ## Como registrar
 
-No review do GitHub: um comentário por item barrado, com o arquivo e a linha. O autor corrige ou explica no fio. O sênior aprova. A CI (`catalog`, `orders`, depois `package`) precisa estar verde. `package` só constrói as imagens. Não há deploy neste repositório, então o gate é o teste antes da imagem.
+No review do GitHub: um comentário por item barrado, com o arquivo e a linha. O autor corrige ou explica no fio. O sênior aprova. A CI (`catalog`, `orders`, depois `package`) precisa estar verde. `release` só corre num push em `main`, depois de `package`, e é o passo de publicação. Sem registry ele constrói as imagens e não faz push.

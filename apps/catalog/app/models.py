@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from pydantic import BaseModel, Field
+
 
 @dataclass(frozen=True)
 class Product:
@@ -43,3 +45,29 @@ def product_json(product: Product) -> dict:
             "validFrom": valid_from,
         },
     }
+
+
+class PriceOut(BaseModel):
+    amountCents: int = Field(examples=[2500])
+    currency: str = Field(examples=["BRL"])
+    validFrom: str = Field(examples=["2020-01-01T00:00:00Z"])
+
+
+class ProductOut(BaseModel):
+    sku: str = Field(examples=["CAD-001"])
+    name: str = Field(examples=["Caderno A4"])
+    price: PriceOut
+
+
+class QuoteOut(BaseModel):
+    products: list[ProductOut]
+    missing: list[str] = Field(examples=[["CAD-OFF"]])
+
+
+class ErrorOut(BaseModel):
+    code: str = Field(examples=["VALIDATION_ERROR"])
+    message: str
+
+
+class HealthOut(BaseModel):
+    status: str = Field(examples=["ok"])

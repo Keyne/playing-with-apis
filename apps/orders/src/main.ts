@@ -1,3 +1,4 @@
+import { registerApiDocs } from "./interfaces/http/docs.js";
 import { buildApp } from "./interfaces/http/app.js";
 import { createCatalogClient } from "./infrastructure/http/catalogClient.js";
 import { createPool, PostgresStore } from "./infrastructure/postgres/store.js";
@@ -25,6 +26,8 @@ const app = buildApp(
   },
   { logger: true },
 );
+
+await registerApiDocs(app);
 
 const shutdown = async () => {
   await app.close();
