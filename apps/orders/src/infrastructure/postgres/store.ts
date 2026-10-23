@@ -44,12 +44,10 @@ type RuleRow = {
 
 const ORDER_SELECT = `
   SELECT o.id, o.status, o.subtotal_cents, o.discount_cents, o.total_cents, o.currency,
-         o.discount_rule_id, o.created_at,
-         r.name AS discount_rule_name, r.percent AS discount_rule_percent,
+         o.discount_rule_id, o.discount_rule_name, o.discount_rule_percent, o.created_at,
          c.id AS customer_id, c.name AS customer_name, c.email AS customer_email
   FROM orders o
   JOIN customers c ON c.id = o.customer_id
-  LEFT JOIN discount_rules r ON r.id = o.discount_rule_id
 `;
 
 export class PostgresStore {
@@ -57,6 +55,20 @@ export class PostgresStore {
 
   async ensureSchema(): Promise<void> {
     await this.pool.query(SCHEMA_SQL);
+    await this.pool.query(`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_rule_name TEXT;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_rule_percent INTEGER;
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'orders_discount_rule_percent_range'
+        ) THEN
+          ALTER TABLE orders
+            ADD CONSTRAINT orders_discount_rule_percent_range
+            CHECK (discount_rule_percent IS NULL OR (discount_rule_percent BETWEEN 0 AND 100));
+        END IF;
+      END $$;
+    `);
   }
 
   async insert(order: NewOrder): Promise<Order> {
@@ -76,8 +88,8 @@ export class PostgresStore {
       await client.query(
         `INSERT INTO orders (
            id, customer_id, status, subtotal_cents, discount_cents, total_cents,
-           currency, discount_rule_id, created_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+           currency, discount_rule_id, discount_rule_name, discount_rule_percent, created_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           order.id,
           customer.id,
@@ -87,6 +99,8 @@ export class PostgresStore {
           order.totalCents,
           order.currency,
           order.discountRule?.id ?? null,
+          order.discountRule?.name ?? null,
+          order.discountRule?.percent ?? null,
           order.createdAt,
         ],
       );

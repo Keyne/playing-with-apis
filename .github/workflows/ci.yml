@@ -54,4 +54,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t catalog:ci apps/catalog
-      - run: docker build -t orders:ci apps/orders
+      - run: docker build -f apps/orders/Dockerfile -t orders:ci .
+
+  release:
+    needs: [catalog, orders, package]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t catalog:release apps/catalog
+      - run: docker build -f apps/orders/Dockerfile -t orders:release .

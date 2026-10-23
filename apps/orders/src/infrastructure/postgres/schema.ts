@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS orders (
   total_cents INTEGER NOT NULL CHECK (total_cents >= 0),
   currency CHAR(3) NOT NULL DEFAULT 'BRL',
   discount_rule_id UUID REFERENCES discount_rules (id),
+  discount_rule_name TEXT,
+  discount_rule_percent INTEGER CHECK (discount_rule_percent IS NULL OR (discount_rule_percent >= 0 AND discount_rule_percent <= 100)),
   created_at TIMESTAMPTZ NOT NULL,
   CHECK (discount_cents <= subtotal_cents),
   CHECK (total_cents = subtotal_cents - discount_cents)

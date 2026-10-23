@@ -76,16 +76,21 @@ export function buildApp(deps: AppDeps, options?: { logger?: boolean }): Fastify
       return reply.status(error.statusCode).send(errorBody(error.code, error.message, error.details));
     }
     if (error instanceof ZodError) {
+      const message = request.method === "GET" ? messages.INVALID_QUERY : messages.VALIDATION_ERROR;
       return reply.status(400).send(
         errorBody(
           "VALIDATION_ERROR",
-          messages.VALIDATION_ERROR,
+          message,
           error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
         ),
       );
     }
     request.log.error(error);
     return reply.status(500).send(errorBody("INTERNAL", messages.INTERNAL));
+  });
+
+  app.get("/", async (_request, reply) => {
+    return reply.redirect("/docs");
   });
 
   app.get("/health", async () => {
@@ -171,12 +176,12 @@ export function decodeCursor(value: string | undefined): Cursor | null {
   const decoded = Buffer.from(value, "base64url").toString("utf8");
   const splitAt = decoded.lastIndexOf("|");
   if (splitAt <= 0) {
-    throw new AppError("VALIDATION_ERROR", 400, messages.VALIDATION_ERROR);
+    throw new AppError("VALIDATION_ERROR", 400, messages.INVALID_QUERY);
   }
   const createdAt = new Date(decoded.slice(0, splitAt));
   const id = decoded.slice(splitAt + 1);
   if (Number.isNaN(createdAt.getTime()) || !z.string().uuid().safeParse(id).success) {
-    throw new AppError("VALIDATION_ERROR", 400, messages.VALIDATION_ERROR);
+    throw new AppError("VALIDATION_ERROR", 400, messages.INVALID_QUERY);
   }
   return { createdAt, id };
 }

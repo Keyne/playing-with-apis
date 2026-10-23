@@ -79,4 +79,52 @@ describeSql("postgres", () => {
     expect(customers.rows[0].n).toBe(1);
     await app.close();
   });
+
+  it("shows the percent copied at creation after the rule changes", async () => {
+    const catalog = catalogOf([
+      { sku: "CAD-010", name: "Licença anual de suporte", amountCents: 250_000, currency: "BRL" },
+    ]);
+    const app = buildApp({ orders: store, discounts: store, catalog });
+    const created = await app.inject({
+      method: "POST",
+      url: "/orders",
+      payload: {
+        customer: { name: "Ada Lovelace", email: "ada@example.com" },
+        items: [{ sku: "CAD-010", quantity: 1 }],
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().id as string;
+
+    const updated = await app.inject({
+      method: "PUT",
+      url: `/discount-rules/${SEEDED_RULE_ID}`,
+      payload: {
+        name: "Pedidos a partir de R$ 200,00 recebem 20%",
+        minSubtotalCents: 20_000,
+        percent: 20,
+        active: true,
+      },
+    });
+    expect(updated.statusCode).toBe(200);
+
+    const again = await app.inject({ method: "GET", url: `/orders/${id}` });
+    expect(again.statusCode).toBe(200);
+    expect(again.json()).toMatchObject({
+      discountCents: 25_000,
+      totalCents: 225_000,
+      discountRule: { name: "Pedidos a partir de R$ 200,00 recebem 10%", percent: 10 },
+    });
+
+    const next = await app.inject({
+      method: "POST",
+      url: "/orders",
+      payload: {
+        customer: { name: "Ada Lovelace", email: "ada@example.com" },
+        items: [{ sku: "CAD-010", quantity: 1 }],
+      },
+    });
+    expect(next.json().discountRule).toMatchObject({ percent: 20 });
+    await app.close();
+  });
 });
