@@ -1,0 +1,26 @@
+[
+  {
+    "code": "VALIDATION_ERROR",
+    "message": "Corpo da solicitação inválido. Verifique as informações enviadas."
+  },
+  {
+    "code": "UNKNOWN_SKU",
+    "message": "SKU não encontrado ou inativo. Nada foi gravado."
+  },
+  {
+    "code": "CATALOG_UNAVAILABLE",
+    "message": "Catálogo indisponível. Nada foi gravado."
+  },
+  {
+    "code": "ORDER_NOT_FOUND",
+    "message": " Pedido não encontrado. Operação cancelada."
+  },
+  {
+    "code": "DISCOUNT_RULE_NOT_FOUND",
+    "message": "Regra de desconto não encontrada. Nada foi gravado."
+  },
+  {
+    "code": "INTERNAL",
+    "message": "Erro interno ao processar a solicitação. Tente novamente mais tarde."
+  }
+]
