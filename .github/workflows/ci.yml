@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+        working-directory: apps/catalog
+      - run: pytest
+        working-directory: apps/catalog
+
+  orders:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: orders
+          POSTGRES_PASSWORD: orders
+          POSTGRES_DB: orders
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orders -d orders"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+        working-directory: apps/orders
+      - run: npm run typecheck
+        working-directory: apps/orders
+      - run: npm test
+        working-directory: apps/orders
+        env:
+          DATABASE_URL: postgres://orders:orders@localhost:5432/orders
+
+  package:
+    needs: [catalog, orders]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t catalog:ci apps/catalog
+      - run: docker build -t orders:ci apps/orders
