@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Catálogo
+  version: "1.0.0"
+  description: |
+    Produtos com preço vigente. O serviço de Pedidos consulta este contrato
+    uma vez por pedido, com todos os SKUs na mesma chamada.
+servers:
+  - url: http://localhost:8081
+paths:
+  /health:
+    get:
+      summary: Health
+      operationId: health
+      responses:
+        "200":
+          description: Processo no ar
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /products:
+    get:
+      summary: Preço vigente de vários produtos
+      operationId: quoteProducts
+      parameters:
+        - in: query
+          name: skus
+          required: true
+          description: SKUs separados por vírgula, de 1 a 50, sem repetição.
+          schema:
+            type: string
+            example: CAD-001,CAD-010
+      responses:
+        "200":
+          description: Encontrados e ausentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+        "400":
+          description: Consulta inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /products/{sku}:
+    get:
+      summary: Um produto com preço vigente
+      operationId: getProduct
+      parameters:
+        - in: path
+          name: sku
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Produto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Sem preço vigente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Money:
+      type: object
+      required: [amountCents, currency, validFrom]
+      properties:
+        amountCents:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          example: BRL
+        validFrom:
+          type: string
+          format: date-time
+    Product:
+      type: object
+      required: [sku, name, price]
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        price:
+          $ref: "#/components/schemas/Money"
+    Quote:
+      type: object
+      required: [products, missing]
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        missing:
+          type: array
+          items:
+            type: string
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string

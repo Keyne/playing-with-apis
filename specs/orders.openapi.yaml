@@ -1,0 +1,314 @@
+openapi: 3.0.3
+info:
+  title: Pedidos
+  version: "1.0.0"
+  description: |
+    Cria, lista e consulta pedidos. O preço de cada item vem do Catálogo
+    no momento da criação. O desconto vem da regra ativa no banco.
+servers:
+  - url: http://localhost:18080
+paths:
+  /health:
+    get:
+      summary: Health
+      operationId: health
+      responses:
+        "200":
+          description: Processo e banco no ar
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+  /orders:
+    post:
+      summary: Criar pedido
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrder"
+      responses:
+        "201":
+          description: Pedido criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Corpo inválido, inclusive se o cliente enviar preço
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: SKU sem preço vigente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Catálogo indisponível
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: Listar pedidos
+      operationId: listOrders
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: cursor
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Página, mais recente primeiro
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orders, nextCursor]
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Order"
+                  nextCursor:
+                    type: string
+                    nullable: true
+  /orders/{id}:
+    get:
+      summary: Consultar pedido
+      operationId: getOrder
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Pedido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /discount-rules:
+    get:
+      summary: Regras de desconto
+      operationId: listDiscountRules
+      responses:
+        "200":
+          description: Regras
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rules]
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DiscountRule"
+  /discount-rules/{id}:
+    put:
+      summary: Alterar regra de desconto
+      operationId: updateDiscountRule
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscountRuleWrite"
+      responses:
+        "200":
+          description: Regra atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscountRule"
+        "404":
+          description: Regra inexistente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    CreateOrder:
+      type: object
+      additionalProperties: false
+      required: [customer, items]
+      properties:
+        customer:
+          type: object
+          additionalProperties: false
+          required: [name, email]
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 120
+            email:
+              type: string
+              format: email
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [sku, quantity]
+            properties:
+              sku:
+                type: string
+                minLength: 1
+                maxLength: 40
+              quantity:
+                type: integer
+                minimum: 1
+                maximum: 999
+    Order:
+      type: object
+      required:
+        - id
+        - customer
+        - items
+        - subtotalCents
+        - discountCents
+        - totalCents
+        - currency
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer:
+          type: object
+          required: [id, name, email]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        subtotalCents:
+          type: integer
+        discountCents:
+          type: integer
+        totalCents:
+          type: integer
+        currency:
+          type: string
+          example: BRL
+        status:
+          type: string
+          enum: [created]
+        discountRule:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DiscountRuleRef"
+        createdAt:
+          type: string
+          format: date-time
+    OrderItem:
+      type: object
+      required: [sku, productName, unitPriceCents, quantity, lineTotalCents]
+      properties:
+        sku:
+          type: string
+        productName:
+          type: string
+        unitPriceCents:
+          type: integer
+        quantity:
+          type: integer
+        lineTotalCents:
+          type: integer
+    DiscountRuleRef:
+      type: object
+      required: [id, name, percent]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        percent:
+          type: integer
+    DiscountRule:
+      allOf:
+        - $ref: "#/components/schemas/DiscountRuleRef"
+        - type: object
+          required: [minSubtotalCents, active]
+          properties:
+            minSubtotalCents:
+              type: integer
+            active:
+              type: boolean
+    DiscountRuleWrite:
+      type: object
+      additionalProperties: false
+      required: [name, minSubtotalCents, percent, active]
+      properties:
+        name:
+          type: string
+        minSubtotalCents:
+          type: integer
+          minimum: 0
+        percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        active:
+          type: boolean
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNKNOWN_SKU
+            - CATALOG_UNAVAILABLE
+            - ORDER_NOT_FOUND
+            - DISCOUNT_RULE_NOT_FOUND
+            - INTERNAL
+        message:
+          type: string
+        details:
+          nullable: true
