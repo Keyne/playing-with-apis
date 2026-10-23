@@ -240,6 +240,7 @@ components:
           enum: [created]
         discountRule:
           nullable: true
+          description: Nome e percentual copiados na criação, só quando o desconto foi aplicado. Abaixo do mínimo o campo é nulo. Alterar a regra não reescreve este pedido.
           allOf:
             - $ref: "#/components/schemas/DiscountRuleRef"
         createdAt:

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { discountCents } from "../src/domain/discount.js";
+import { messages } from "../src/domain/messages.js";
 import { buildApp } from "../src/interfaces/http/app.js";
 import { createCatalogClient } from "../src/infrastructure/http/catalogClient.js";
 import { orderItemsInsert } from "../src/infrastructure/postgres/sql.js";
@@ -60,7 +61,7 @@ describe("create order", () => {
     expect(body.currency).toBe("BRL");
     expect(body.customer.email).toBe("ada@example.com");
     expect(body.items[0]).toMatchObject({ sku: "CAD-001", unitPriceCents: 2_500, lineTotalCents: 5_000 });
-    expect(body.discountRule.percent).toBe(10);
+    expect(body.discountRule).toBeNull();
     expect(catalog.calls).toEqual([["CAD-001"]]);
   });
 
@@ -150,7 +151,43 @@ describe("create order", () => {
       url: "/orders",
       payload: { customer: ada, items: [{ sku: "CAD-001", quantity: 2 }] },
     });
-    expect(small.json()).toMatchObject({ subtotalCents: 5_000, discountCents: 0, totalCents: 5_000 });
+    expect(small.json()).toMatchObject({
+      subtotalCents: 5_000,
+      discountCents: 0,
+      totalCents: 5_000,
+      discountRule: null,
+    });
+  });
+
+  it("keeps the name and percent copied onto the order", async () => {
+    const { app } = appWith([notebook], ["00000000-0000-4000-8000-000000000007"]);
+    const created = await app.inject({
+      method: "POST",
+      url: "/orders",
+      payload: { customer: ada, items: [{ sku: "CAD-010", quantity: 1 }] },
+    });
+    const id = created.json().id as string;
+    expect(created.json().discountRule).toMatchObject({
+      name: "Pedidos a partir de R$ 200,00 recebem 10%",
+      percent: 10,
+    });
+    const updated = await app.inject({
+      method: "PUT",
+      url: "/discount-rules/11111111-1111-4111-8111-111111111111",
+      payload: {
+        name: "Pedidos a partir de R$ 200,00 recebem 20%",
+        minSubtotalCents: 20_000,
+        percent: 20,
+        active: true,
+      },
+    });
+    expect(updated.statusCode).toBe(200);
+    const again = await app.inject({ method: "GET", url: `/orders/${id}` });
+    expect(again.json().discountCents).toBe(25_000);
+    expect(again.json().discountRule).toMatchObject({
+      name: "Pedidos a partir de R$ 200,00 recebem 10%",
+      percent: 10,
+    });
   });
 
   it("stores nothing when the catalog is down", async () => {
@@ -199,6 +236,32 @@ describe("list", () => {
     });
     expect(second.json().orders.map((order: { id: string }) => order.id)).toEqual([ids[0]]);
     expect(second.json().nextCursor).toBeNull();
+  });
+});
+
+describe("query errors", () => {
+  it("does not call a bad limit invalid order data", async () => {
+    const { app } = appWith([], []);
+    const response = await app.inject({ method: "GET", url: "/orders?limit=0" });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("VALIDATION_ERROR");
+    expect(response.json().message).toBe(messages.INVALID_QUERY);
+  });
+
+  it("does not call a bad id invalid order data", async () => {
+    const { app } = appWith([], []);
+    const response = await app.inject({ method: "GET", url: "/orders/not-a-uuid" });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().message).toBe(messages.INVALID_QUERY);
+  });
+});
+
+describe("docs", () => {
+  it("sends the browser from / to /docs", async () => {
+    const { app } = appWith([], []);
+    const response = await app.inject({ method: "GET", url: "/" });
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe("/docs");
   });
 });
 

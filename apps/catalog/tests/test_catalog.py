@@ -100,6 +100,40 @@ def test_empty_sku_query_is_400():
     assert response.json()["code"] == "VALIDATION_ERROR"
 
 
+def test_openapi_describes_response_bodies():
+    client = TestClient(create_app(FakeRepo([])))
+    schema = client.get("/openapi.json").json()
+    components = schema["components"]["schemas"]
+
+    def body(path, method, status):
+        raw = schema["paths"][path][method]["responses"][status]["content"]["application/json"]["schema"]
+        if "$ref" in raw:
+            return components[raw["$ref"].rsplit("/", 1)[-1]]
+        return raw
+
+    quote = body("/products", "get", "200")
+    assert set(quote["properties"]) >= {"products", "missing"}
+    product = body("/products/{sku}", "get", "200")
+    assert set(product["properties"]) >= {"sku", "name", "price"}
+    price_ref = product["properties"]["price"]["$ref"]
+    price = components[price_ref.rsplit("/", 1)[-1]]
+    assert set(price["properties"]) >= {"amountCents", "currency", "validFrom"}
+    error = body("/products", "get", "400")
+    assert set(error["properties"]) >= {"code", "message"}
+    health = body("/health", "get", "200")
+    assert "status" in health["properties"]
+
+
+def test_root_redirects_to_swagger():
+    client = TestClient(create_app(FakeRepo([])))
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "/docs"
+    docs = client.get("/docs")
+    assert docs.status_code == 200
+    assert "swagger" in docs.text.lower()
+
+
 def test_single_product_404_when_not_sellable():
     repo = FakeRepo([Product("CAD-OFF", "Mousepad", 4000, "BRL", PAST, False)])
     client = TestClient(create_app(repo))

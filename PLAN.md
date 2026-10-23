@@ -39,7 +39,7 @@ Monorepo. Two processes, two databases, HTTP between them. No shared database an
 | Contract | OpenAPI 3 YAML written before the handlers | This is the spec in Spec-Driven Development. |
 | Tests | Vitest + Pytest. Postgres service in CI. | Creation of an order is an integration test, not only a unit test. |
 
-No custom frontend. The brief does not ask for one. OpenAPI plus the demo script are the walkthrough.
+No product frontend. The brief does not ask for one. Each service root redirects to Swagger UI (`/docs`): FastAPI's built-in page for Catálogo, and `@fastify/swagger-ui` serving `specs/orders.openapi.yaml` for Pedidos. The demo script remains the scripted walkthrough.
 
 Money is integer cents. Currency is BRL only. No floats.
 
@@ -112,7 +112,7 @@ Discount rule, seeded, not hardcoded:
 - Type: `PERCENT_OFF_SUBTOTAL`.
 - `min_subtotal_cents = 20000`, `percent = 10`, `active = true`.
 
-`PUT /discount-rules/{id}` changes the row. The use case reads the table on every create. Activating a rule deactivates the others. Tests cover below-threshold (discount 0), at-threshold, and a changed percent without a code edit.
+`PUT /discount-rules/{id}` changes the row. The use case reads the table on every create and copies the rule name and percent onto the order only when that rule reduced the total. Below the minimum the order stores discount 0 and `discountRule` null. A later edit does not change orders already stored. Activating a rule deactivates the others. Tests cover below-threshold (discount 0, rule null), at-threshold, and a changed percent without a code edit.
 
 ## AI validation — which model
 
@@ -155,7 +155,8 @@ GitHub Actions on pull requests and on pushes to `develop` and `main`:
 
 1. Catalog unit tests on Python 3.12.
 2. Orders typecheck, unit tests, and the Postgres integration test.
-3. A `package` job builds both images only after those jobs pass. It does not push anywhere. That is the gate before any deploy.
+3. A `package` job builds both images only after those jobs pass.
+4. A `release` job runs on a push to `main`, and only after `package`. That is the deploy step. It builds the images a publish would ship. No registry is configured, so it does not push.
 
 Branch story: `main`, `develop`, `feature/*` merged with `--no-ff`, then one release merge `develop` → `main`.
 

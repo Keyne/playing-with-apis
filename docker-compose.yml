@@ -33,7 +33,9 @@ services:
         condition: service_healthy
 
   orders:
-    build: ./apps/orders
+    build:
+      context: .
+      dockerfile: apps/orders/Dockerfile
     environment:
       DATABASE_URL: postgres://orders:orders@postgres:5432/orders
       CATALOG_BASE_URL: http://catalog:8081

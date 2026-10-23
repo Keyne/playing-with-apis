@@ -42,6 +42,8 @@ Saída recusada não entra no código. O arquivo que o serviço usa é `apps/ord
 | Code | Mensagem aceita |
 |---|---|
 | VALIDATION_ERROR | Os dados do pedido não são válidos. |
+
+Uma consulta GET com limite, cursor ou id inválido não usa essa frase. A resposta continua com o código `VALIDATION_ERROR` e a mensagem `Os parâmetros da consulta não são válidos.`
 | UNKNOWN_SKU | Um ou mais produtos não existem ou não têm preço vigente. |
 | CATALOG_UNAVAILABLE | O catálogo não respondeu. O pedido não foi gravado. |
 | ORDER_NOT_FOUND | Pedido não encontrado. |

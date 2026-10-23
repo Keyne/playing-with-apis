@@ -16,4 +16,6 @@ O enunciado diz que o desconto é configurável e não fica fixo no código. Um 
 
 ## Consequência
 
-Só existe um tipo de regra. Não há acúmulo de cupons. Abaixo do mínimo o desconto é zero e a regra consultada ainda aparece na resposta, para ficar claro que ela rodou.
+Só existe um tipo de regra. Não há acúmulo de cupons. Abaixo do mínimo o desconto é zero e `discountRule` fica nulo. O nome e o percentual só são gravados quando a regra reduziu o total.
+
+O pedido grava `discount_rule_name` e `discount_rule_percent` na própria linha. A leitura não junta a regra viva. Um `PUT` muda o próximo pedido e deixa os anteriores com o percentual que de fato foi cobrado.
